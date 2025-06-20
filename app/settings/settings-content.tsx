@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import type { User as UserType } from "@/lib/types";
+import packageJson from "@/package.json";
 import {
   ArrowLeft,
   Calendar,
@@ -133,10 +134,9 @@ export default function SettingsContent({ user }: SettingsContentProps) {
             <CardContent className="space-y-6">
               <div className="flex items-center space-x-4">
                 <Avatar className="h-16 w-16">
-                  <AvatarImage
-                    src={user.avatar_url || "/placeholder.svg"}
-                    alt={user.email}
-                  />
+                  {user.avatar_url && (
+                    <AvatarImage src={user.avatar_url} alt={user.email} />
+                  )}
                   <AvatarFallback className="bg-forest-100 text-forest-800 text-lg">
                     {getInitials(user.email)}
                   </AvatarFallback>
@@ -269,7 +269,9 @@ export default function SettingsContent({ user }: SettingsContentProps) {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="p-3 rounded-lg bg-forest-50/50">
                   <p className="text-sm font-medium text-forest-800">Version</p>
-                  <p className="text-sm text-forest-600">1.0.0</p>
+                  <p className="text-sm text-forest-600">
+                    {packageJson.version}
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg bg-forest-50/50">
                   <p className="text-sm font-medium text-forest-800">

@@ -1,5 +1,6 @@
 "use client";
 
+import CSVImportDialog from "@/components/csv-import-dialog";
 import ManualTimeEntryDialog from "@/components/manual-time-entry-dialog";
 import TimeEntryEditDialog from "@/components/time-entry-edit-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ import {
   Plus,
   Square,
   Trash2,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -61,6 +63,7 @@ export default function ActivityDetailContent({
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showManualDialog, setShowManualDialog] = useState(false);
+  const [showCSVImportDialog, setShowCSVImportDialog] = useState(false);
   const supabase = createClient();
 
   const { isRunning, seconds, startTimer, stopTimer } = useTimer({
@@ -165,6 +168,14 @@ export default function ActivityDetailContent({
             </div>
 
             <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setShowCSVImportDialog(true)}
+                variant="outline"
+                className="border-forest-300 text-forest-700 hover:bg-forest-50"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
               <Button
                 onClick={() => setShowManualDialog(true)}
                 variant="outline"
@@ -411,6 +422,13 @@ export default function ActivityDetailContent({
       <ManualTimeEntryDialog
         open={showManualDialog}
         onOpenChange={setShowManualDialog}
+        activityId={activity.id}
+        onSuccess={refreshActivity}
+      />
+
+      <CSVImportDialog
+        open={showCSVImportDialog}
+        onOpenChange={setShowCSVImportDialog}
         activityId={activity.id}
         onSuccess={refreshActivity}
       />

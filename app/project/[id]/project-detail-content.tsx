@@ -1,6 +1,7 @@
 "use client";
 
 import ActivityDialog from "@/components/activity-dialog";
+import CSVImportDialog from "@/components/csv-import-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,7 @@ import {
   Plus,
   Square,
   TrendingUp,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -77,6 +79,7 @@ export default function ProjectDetailContent({
 }: ProjectDetailContentProps) {
   const [project, setProject] = useState(initialProject);
   const [showActivityDialog, setShowActivityDialog] = useState(false);
+  const [showCSVImportDialog, setShowCSVImportDialog] = useState(false);
   const supabase = createClient();
 
   const refreshProject = async () => {
@@ -246,6 +249,14 @@ export default function ProjectDetailContent({
             </div>
 
             <div className="flex items-center space-x-2">
+              <Button
+                onClick={() => setShowCSVImportDialog(true)}
+                variant="outline"
+                className="border-forest-300 text-forest-700 hover:bg-forest-50"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
               <Button
                 onClick={handleExportProject}
                 variant="outline"
@@ -493,6 +504,12 @@ export default function ProjectDetailContent({
       <ActivityDialog
         open={showActivityDialog}
         onOpenChange={setShowActivityDialog}
+        project={project}
+        onSuccess={refreshProject}
+      />
+      <CSVImportDialog
+        open={showCSVImportDialog}
+        onOpenChange={setShowCSVImportDialog}
         project={project}
         onSuccess={refreshProject}
       />
