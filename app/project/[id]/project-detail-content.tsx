@@ -18,6 +18,7 @@ import {
 import { useTimer } from "@/hooks/use-timer";
 import { createClient } from "@/lib/supabase/client";
 import type { Activity, Project, User } from "@/lib/types";
+import { downloadCSV, generateProjectCSV } from "@/lib/utils/csv-export";
 import {
   calculateEarnings,
   formatCurrency,
@@ -30,6 +31,7 @@ import {
   ArrowLeft,
   Clock,
   DollarSign,
+  Download,
   Play,
   Plus,
   Square,
@@ -132,10 +134,7 @@ export default function ProjectDetailContent({
             (total, entry) => total + (entry.duration || 0),
             0
           ) || 0;
-        const effectiveRate = getEffectiveHourlyRate({
-          activity,
-          project,
-        });
+        const effectiveRate = getEffectiveHourlyRate({ activity, project });
         const earnings = calculateEarnings(totalTime, effectiveRate);
 
         return {
@@ -186,6 +185,19 @@ export default function ProjectDetailContent({
     return null;
   };
 
+  const handleExportProject = async () => {
+    try {
+      const csvContent = generateProjectCSV(project);
+      const filename = `${project.name
+        .replace(/[^a-z0-9]/gi, "_")
+        .toLowerCase()}_report_${new Date().toISOString().split("T")[0]}.csv`;
+      downloadCSV(csvContent, filename);
+    } catch (error) {
+      console.error("Error exporting project data:", error);
+      alert("Failed to export project data");
+    }
+  };
+
   const totalTime = getTotalTime();
   const totalEarnings = getTotalEarnings();
   const activityStats = getActivityStats();
@@ -233,13 +245,23 @@ export default function ProjectDetailContent({
               </div>
             </div>
 
-            <Button
-              onClick={() => setShowActivityDialog(true)}
-              className="forest-gradient hover:from-forest-600 hover:to-forest-800 text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Activity
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={handleExportProject}
+                variant="outline"
+                className="border-forest-300 text-forest-700 hover:bg-forest-50"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+              <Button
+                onClick={() => setShowActivityDialog(true)}
+                className="forest-gradient hover:from-forest-600 hover:to-forest-800 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Activity
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -512,9 +534,11 @@ function ActivityCard({
     <div className="flex items-center justify-between p-4 rounded-lg bg-forest-50/50 border border-forest-200/50">
       <div className="flex-1 min-w-0">
         <div className="flex items-center space-x-2 mb-1">
-          <h4 className="text-sm font-medium text-forest-800 truncate">
-            {activity.name}
-          </h4>
+          <Link href={`/activity/${activity.id}`}>
+            <h4 className="text-sm font-medium text-forest-800 truncate hover:text-forest-600 cursor-pointer">
+              {activity.name}
+            </h4>
+          </Link>
           {activity.hourly_rate && (
             <Badge
               variant="secondary"

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import type { Activity, Client, Project, User } from "@/lib/types";
+import { downloadCSV, generateClientCSV } from "@/lib/utils/csv-export";
 import {
   calculateEarnings,
   formatCurrency,
@@ -24,6 +25,7 @@ import {
 import {
   BarChart3,
   Clock,
+  Download,
   LogOut,
   Plus,
   Settings,
@@ -137,6 +139,38 @@ export default function DashboardContent({
 
   const runningActivity = getRunningActivity();
   const allProjects = clients.flatMap((client) => client.projects || []);
+
+  const handleExportClient = async (client: Client) => {
+    try {
+      const { data } = await supabase
+        .from("clients")
+        .select(
+          `
+        *,
+        projects (
+          *,
+          activities (
+            *,
+            time_entries (*)
+          )
+        )
+      `
+        )
+        .eq("id", client.id)
+        .single();
+
+      if (data) {
+        const csvContent = generateClientCSV(data);
+        const filename = `${client.name
+          .replace(/[^a-z0-9]/gi, "_")
+          .toLowerCase()}_report_${new Date().toISOString().split("T")[0]}.csv`;
+        downloadCSV(csvContent, filename);
+      }
+    } catch (error) {
+      console.error("Error exporting client data:", error);
+      alert("Failed to export client data");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-forest-50 to-forest-100">
@@ -323,6 +357,14 @@ export default function DashboardContent({
                   >
                     <Plus className="h-3 w-3 mr-1" />
                     Add Project
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleExportClient(client)}
+                    className="border-forest-300 text-forest-700 hover:bg-forest-50"
+                  >
+                    <Download className="h-3 w-3" />
                   </Button>
                 </div>
               </CardContent>

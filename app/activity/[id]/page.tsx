@@ -1,14 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import ProjectDetailContent from "./project-detail-content";
+import ActivityDetailContent from "./activity-detail-content";
 
-interface ProjectPageProps {
+interface ActivityPageProps {
   params: Promise<{
     id: string;
   }>;
 }
 
-export default async function ProjectPage({ params }: ProjectPageProps) {
+export default async function ActivityPage({ params }: ActivityPageProps) {
   const supabase = await createClient();
 
   const {
@@ -21,27 +21,26 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   }
 
   const { id } = await params;
-
-  // Fetch project with all related data
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
+  // Fetch activity with all related data
+  const { data: activity, error: activityError } = await supabase
+    .from("activities")
     .select(
       `
       *,
-      client:clients (*),
-      activities (
+      project:projects (
         *,
-        time_entries (*)
-      )
+        client:clients (*)
+      ),
+      time_entries (*)
     `
     )
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
 
-  if (projectError || !project) {
+  if (activityError || !activity) {
     redirect("/dashboard");
   }
 
-  return <ProjectDetailContent user={user} project={project} />;
+  return <ActivityDetailContent user={user} activity={activity} />;
 }
