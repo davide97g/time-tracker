@@ -1,4 +1,4 @@
-import { Activity, Project } from "../types";
+import { Activity, Client, Project } from "../types";
 
 export function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
@@ -53,9 +53,11 @@ export function calculateEarnings(
 export function getEffectiveHourlyRate({
   activity,
   project,
+  client,
 }: {
   activity: Activity;
   project: Project;
+  client?: Client;
 }): number {
   if (activity.hourly_rate) {
     return activity.hourly_rate;
@@ -64,5 +66,5 @@ export function getEffectiveHourlyRate({
   } else if (project.client?.hourly_rate) {
     return project.client.hourly_rate;
   }
-  return 0;
+  return client?.hourly_rate || 0;
 }

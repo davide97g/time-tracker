@@ -110,6 +110,7 @@ export default function DashboardContent({
                 const effectiveRate = getEffectiveHourlyRate({
                   activity,
                   project,
+                  client,
                 });
                 return (
                   entryTotal +

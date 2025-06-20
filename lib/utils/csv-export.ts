@@ -37,6 +37,7 @@ export function generateClientCSV(
           const effectiveRate = getEffectiveHourlyRate({
             activity,
             project,
+            client,
           });
           const durationHours = (entry.duration || 0) / 3600;
           const earnings = calculateEarnings(
@@ -91,7 +92,10 @@ export function generateProjectCSV(
     activity.time_entries
       ?.filter((entry) => entry.end_time) // Only completed entries
       .forEach((entry) => {
-        const effectiveRate = getEffectiveHourlyRate({ activity, project });
+        const effectiveRate = getEffectiveHourlyRate({
+          activity,
+          project,
+        });
         const durationHours = (entry.duration || 0) / 3600;
         const earnings = calculateEarnings(entry.duration || 0, effectiveRate);
 
