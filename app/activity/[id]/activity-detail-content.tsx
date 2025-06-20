@@ -1,6 +1,8 @@
 "use client";
 
+import ActivityDeleteDialog from "@/components/activity-delete-dialog";
 import CSVImportDialog from "@/components/csv-import-dialog";
+import CSVTemplatesDialog from "@/components/csv-templates-dialog";
 import ManualTimeEntryDialog from "@/components/manual-time-entry-dialog";
 import TimeEntryEditDialog from "@/components/time-entry-edit-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +14,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTimer } from "@/hooks/use-timer";
 import { createClient } from "@/lib/supabase/client";
 import type { Activity, TimeEntry, User } from "@/lib/types";
@@ -28,6 +36,8 @@ import {
   Clock,
   DollarSign,
   Edit,
+  FileText,
+  MoreHorizontal,
   Play,
   Plus,
   Square,
@@ -35,6 +45,7 @@ import {
   Upload,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface ActivityDetailContentProps {
@@ -64,7 +75,9 @@ export default function ActivityDetailContent({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showManualDialog, setShowManualDialog] = useState(false);
   const [showCSVImportDialog, setShowCSVImportDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
   const { isRunning, seconds, startTimer, stopTimer } = useTimer({
     activityId: activity.id,
@@ -110,6 +123,15 @@ export default function ActivityDetailContent({
       console.error("Error deleting entry:", error);
       alert("Failed to delete entry");
     }
+  };
+
+  const handleDeleteActivity = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleActivityDeleted = () => {
+    // Navigate back to project page after successful deletion
+    router.push(`/project/${activity.project.id}`);
   };
 
   const getTotalTime = (): number => {
@@ -168,6 +190,15 @@ export default function ActivityDetailContent({
             </div>
 
             <div className="flex items-center space-x-2">
+              <CSVTemplatesDialog>
+                <Button
+                  variant="outline"
+                  className="border-forest-300 text-forest-700 hover:bg-forest-50"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  CSV Templates
+                </Button>
+              </CSVTemplatesDialog>
               <Button
                 onClick={() => setShowCSVImportDialog(true)}
                 variant="outline"
@@ -204,6 +235,27 @@ export default function ActivityDetailContent({
                   </>
                 )}
               </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-forest-300 text-forest-700 hover:bg-forest-50"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={handleDeleteActivity}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Activity
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -431,6 +483,13 @@ export default function ActivityDetailContent({
         onOpenChange={setShowCSVImportDialog}
         activityId={activity.id}
         onSuccess={refreshActivity}
+      />
+
+      <ActivityDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        activity={activity}
+        onSuccess={handleActivityDeleted}
       />
     </div>
   );

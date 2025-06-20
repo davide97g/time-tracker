@@ -29,12 +29,6 @@ export function formatDate(date: string | Date): string {
   });
 }
 
-export function calculateDuration(startTime: string, endTime?: string): number {
-  const start = new Date(startTime).getTime();
-  const end = endTime ? new Date(endTime).getTime() : Date.now();
-  return Math.floor((end - start) / 1000);
-}
-
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

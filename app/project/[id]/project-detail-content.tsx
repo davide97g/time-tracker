@@ -1,7 +1,9 @@
 "use client";
 
+import ActivityDeleteDialog from "@/components/activity-delete-dialog";
 import ActivityDialog from "@/components/activity-dialog";
 import CSVImportDialog from "@/components/csv-import-dialog";
+import CSVTemplatesDialog from "@/components/csv-templates-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +18,12 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTimer } from "@/hooks/use-timer";
 import { createClient } from "@/lib/supabase/client";
 import type { Activity, Project, User } from "@/lib/types";
@@ -33,9 +41,13 @@ import {
   Clock,
   DollarSign,
   Download,
+  Edit,
+  FileText,
+  MoreHorizontal,
   Play,
   Plus,
   Square,
+  Trash2,
   TrendingUp,
   Upload,
 } from "lucide-react";
@@ -80,6 +92,10 @@ export default function ProjectDetailContent({
   const [project, setProject] = useState(initialProject);
   const [showActivityDialog, setShowActivityDialog] = useState(false);
   const [showCSVImportDialog, setShowCSVImportDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<Activity | null>(
+    null
+  );
   const supabase = createClient();
 
   const refreshProject = async () => {
@@ -100,6 +116,11 @@ export default function ProjectDetailContent({
       .single();
 
     if (data) setProject(data);
+  };
+
+  const handleDeleteActivity = (activity: Activity) => {
+    setActivityToDelete(activity);
+    setShowDeleteDialog(true);
   };
 
   const getTotalTime = (): number => {
@@ -249,6 +270,15 @@ export default function ProjectDetailContent({
             </div>
 
             <div className="flex items-center space-x-2">
+              <CSVTemplatesDialog>
+                <Button
+                  variant="outline"
+                  className="border-forest-300 text-forest-700 hover:bg-forest-50"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  CSV Templates
+                </Button>
+              </CSVTemplatesDialog>
               <Button
                 onClick={() => setShowCSVImportDialog(true)}
                 variant="outline"
@@ -475,6 +505,7 @@ export default function ProjectDetailContent({
                 activity={activity}
                 project={project}
                 onUpdate={refreshProject}
+                onDelete={() => handleDeleteActivity(activity)}
               />
             ))}
 
@@ -513,6 +544,17 @@ export default function ProjectDetailContent({
         project={project}
         onSuccess={refreshProject}
       />
+      {activityToDelete && (
+        <ActivityDeleteDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          activity={activityToDelete}
+          onSuccess={() => {
+            refreshProject();
+            setActivityToDelete(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -521,6 +563,7 @@ function ActivityCard({
   activity,
   project,
   onUpdate,
+  onDelete,
 }: {
   activity: Activity & {
     time_entries?: Array<{
@@ -531,6 +574,7 @@ function ActivityCard({
   };
   project: Project & { client: { hourly_rate: number } };
   onUpdate: () => void;
+  onDelete: () => void;
 }) {
   const { isRunning, seconds, startTimer, stopTimer } = useTimer({
     activityId: activity.id,
@@ -577,22 +621,54 @@ function ActivityCard({
         )}
       </div>
 
-      <Button
-        size="sm"
-        variant={isRunning ? "destructive" : "default"}
-        onClick={isRunning ? stopTimer : startTimer}
-        className={
-          isRunning
-            ? "bg-red-500 hover:bg-red-600 text-white"
-            : "forest-gradient hover:from-forest-600 hover:to-forest-800 text-white"
-        }
-      >
-        {isRunning ? (
-          <Square className="h-3 w-3" />
-        ) : (
-          <Play className="h-3 w-3" />
-        )}
-      </Button>
+      <div className="flex items-center space-x-2">
+        <Button
+          size="sm"
+          variant={isRunning ? "destructive" : "default"}
+          onClick={isRunning ? stopTimer : startTimer}
+          className={
+            isRunning
+              ? "bg-red-500 hover:bg-red-600 text-white"
+              : "forest-gradient hover:from-forest-600 hover:to-forest-800 text-white"
+          }
+        >
+          {isRunning ? (
+            <Square className="h-3 w-3" />
+          ) : (
+            <Play className="h-3 w-3" />
+          )}
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-forest-600 hover:text-forest-800"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/activity/${activity.id}`}
+                className="flex items-center"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                View Details
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-red-600 focus:text-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Activity
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }

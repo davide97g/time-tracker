@@ -13,37 +13,50 @@ export function useTimer({ activityId, onUpdate }: UseTimerProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [currentEntry, setCurrentEntry] = useState<TimeEntry | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const saveIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const startTimeRef = useRef<number>(0);
   const supabase = createClient();
 
-  // Auto-save every 10 seconds
-  const SAVE_INTERVAL = 10000;
+  // Auto-save every 5 seconds
+  const SAVE_INTERVAL = 5000;
 
   const saveProgress = useCallback(async () => {
-    if (!currentEntry || !isRunning) return;
+    if (!currentEntry || !isRunning || !startTimeRef.current) return;
 
     try {
+      // Calculate current duration based on actual elapsed time
+      const currentTime = Date.now();
+      const elapsedSeconds = Math.floor(
+        (currentTime - startTimeRef.current) / 1000
+      );
+
       const { error } = await supabase
         .from("time_entries")
         .update({
-          duration: seconds,
+          duration: elapsedSeconds,
           updated_at: new Date().toISOString(),
         })
         .eq("id", currentEntry.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error saving progress:", error);
+      }
     } catch (error) {
       console.error("Error saving progress:", error);
     }
-  }, [currentEntry, seconds, isRunning, supabase]);
+  }, [currentEntry, isRunning, supabase]);
 
   const startTimer = async () => {
     try {
       // Stop any existing running timers for this activity
       const { error: stopError } = await supabase
         .from("time_entries")
-        .update({ is_running: false })
+        .update({
+          is_running: false,
+          end_time: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
         .eq("activity_id", activityId)
         .eq("is_running", true);
 
@@ -60,13 +73,16 @@ export function useTimer({ activityId, onUpdate }: UseTimerProps) {
         throw new Error("Not authenticated");
       }
 
+      const startTime = new Date();
+      startTimeRef.current = startTime.getTime();
+
       // Create new time entry
       const { data, error } = await supabase
         .from("time_entries")
         .insert({
           activity_id: activityId,
           user_id: user.id,
-          start_time: new Date().toISOString(),
+          start_time: startTime.toISOString(),
           is_running: true,
           duration: 0,
         })
@@ -86,34 +102,41 @@ export function useTimer({ activityId, onUpdate }: UseTimerProps) {
       setIsRunning(true);
       setSeconds(0);
 
-      // Start the timer
+      // Start the timer - update every second
       intervalRef.current = setInterval(() => {
-        setSeconds((prev) => prev + 1);
+        const currentTime = Date.now();
+        const elapsedSeconds = Math.floor(
+          (currentTime - startTimeRef.current) / 1000
+        );
+        setSeconds(elapsedSeconds);
       }, 1000);
 
-      // Start auto-save
+      // Start auto-save interval
       saveIntervalRef.current = setInterval(saveProgress, SAVE_INTERVAL);
 
       onUpdate?.(data);
     } catch (error) {
       console.error("Error starting timer:", error);
-      // Show user-friendly error
       alert("Failed to start timer. Please try again.");
     }
   };
 
   const stopTimer = async () => {
-    if (!currentEntry) return;
+    if (!currentEntry || !startTimeRef.current) return;
 
     try {
-      const endTime = new Date().toISOString();
+      const endTime = new Date();
+      const finalDuration = Math.floor(
+        (endTime.getTime() - startTimeRef.current) / 1000
+      );
+
       const { data, error } = await supabase
         .from("time_entries")
         .update({
-          end_time: endTime,
-          duration: seconds,
+          end_time: endTime.toISOString(),
+          duration: finalDuration,
           is_running: false,
-          updated_at: endTime,
+          updated_at: endTime.toISOString(),
         })
         .eq("id", currentEntry.id)
         .select()
@@ -122,12 +145,23 @@ export function useTimer({ activityId, onUpdate }: UseTimerProps) {
       if (error) throw error;
 
       setIsRunning(false);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (saveIntervalRef.current) clearInterval(saveIntervalRef.current);
+      setSeconds(0);
+      setCurrentEntry(null);
+      startTimeRef.current = 0;
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = undefined;
+      }
+      if (saveIntervalRef.current) {
+        clearInterval(saveIntervalRef.current);
+        saveIntervalRef.current = undefined;
+      }
 
       onUpdate?.(data);
     } catch (error) {
       console.error("Error stopping timer:", error);
+      alert("Failed to stop timer. Please try again.");
     }
   };
 
@@ -160,15 +194,21 @@ export function useTimer({ activityId, onUpdate }: UseTimerProps) {
         if (data) {
           setCurrentEntry(data);
           setIsRunning(true);
-          const elapsed = Math.floor(
-            (Date.now() - new Date(data.start_time).getTime()) / 1000
-          );
-          setSeconds(elapsed);
 
+          const startTime = new Date(data.start_time).getTime();
+          startTimeRef.current = startTime;
+          const currentTime = Date.now();
+          const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+          setSeconds(elapsedSeconds);
+
+          // Start the timer from current elapsed time
           intervalRef.current = setInterval(() => {
-            setSeconds((prev) => prev + 1);
+            const now = Date.now();
+            const elapsed = Math.floor((now - startTime) / 1000);
+            setSeconds(elapsed);
           }, 1000);
 
+          // Start auto-save
           saveIntervalRef.current = setInterval(saveProgress, SAVE_INTERVAL);
         }
       } catch (error) {
@@ -179,25 +219,42 @@ export function useTimer({ activityId, onUpdate }: UseTimerProps) {
     checkRunningTimer();
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (saveIntervalRef.current) clearInterval(saveIntervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (saveIntervalRef.current) {
+        clearInterval(saveIntervalRef.current);
+      }
     };
-  }, [activityId, supabase]);
+  }, [activityId, supabase, saveProgress]);
 
-  // Handle page unload
+  // Handle page unload - save final state
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isRunning) {
+    const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
+      if (isRunning && currentEntry && startTimeRef.current) {
         e.preventDefault();
         e.returnValue =
           "You have a running timer. Are you sure you want to leave?";
+
+        // Try to save final state
+        const finalDuration = Math.floor(
+          (Date.now() - startTimeRef.current) / 1000
+        );
+        await supabase
+          .from("time_entries")
+          .update({
+            duration: finalDuration,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", currentEntry.id);
+
         return e.returnValue;
       }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isRunning]);
+  }, [isRunning, currentEntry, supabase]);
 
   return {
     isRunning,
